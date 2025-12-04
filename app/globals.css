@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 12%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 264 70% 50%;
+    --primary-foreground: 0 0% 95%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 200 65% 55%;
+    --accent-foreground: 0 0% 15%;
+    --destructive: 25 65% 62%;
+    --destructive-foreground: 0 0% 15%;
+    --border: 0 0% 22%;
+    --input: 0 0% 20%;
+    --ring: 264 70% 50%;
+    --chart-1: 200 65% 55%;
+    --chart-2: 120 50% 65%;
+    --chart-3: 50 45% 70%;
+    --chart-4: 270 60% 45%;
+    --chart-5: 350 55% 60%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 12%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 200 65% 55%;
+    --primary-foreground: 0 0% 12%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 200 65% 55%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 25 65% 62%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 22%;
+    --input: 0 0% 20%;
+    --ring: 200 65% 55%;
+    --chart-1: 200 65% 55%;
+    --chart-2: 120 50% 65%;
+    --chart-3: 50 45% 70%;
+    --chart-4: 270 60% 45%;
+    --chart-5: 350 55% 60%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Styles pour les inputs de type date */
+input[type="date"] {
+  position: relative;
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.6) brightness(1.2);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.8) brightness(1.4);
+}
+
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: rgb(226 232 240);
+}
+
+/* Styles pour react-datepicker */
+.react-datepicker {
+  @apply bg-slate-800 border border-slate-700 rounded-lg shadow-xl;
+}
+
+.react-datepicker__header {
+  @apply bg-slate-900 border-b border-slate-700 rounded-t-lg;
+}
+
+.react-datepicker__current-month {
+  @apply text-slate-50 font-semibold;
+}
+
+.react-datepicker__day-name {
+  @apply text-slate-400;
+}
+
+.react-datepicker__day {
+  @apply text-slate-300 hover:bg-slate-700 hover:rounded;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-cyan-600 text-white hover:bg-cyan-700 rounded;
+}
+
+.react-datepicker__day--today {
+  @apply font-bold text-cyan-400;
+}
+
+.react-datepicker__day--keyboard-selected {
+  @apply bg-slate-700 rounded;
+}
+
+.react-datepicker__day--disabled {
+  @apply text-slate-600 hover:bg-transparent cursor-not-allowed;
+}
+
+.react-datepicker__navigation {
+  @apply top-3;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply border-slate-400;
+}
+
+.react-datepicker__navigation:hover *::before {
+  @apply border-slate-200;
+}
+
+.date-picker-popper {
+  @apply z-50;
+}
+
+/* Hide scrollbar completely */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: none;
+}
+
+/* Print styles - Mode clair pour impression */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide non-essential elements */
+  button,
+  .no-print,
+  nav,
+  aside {
+    display: none !important;
+  }
+
+  /* Make widgets print-friendly */
+  .print-widget {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    color: #1f2937 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-widget h3 {
+    color: #1f2937 !important;
+  }
+
+  /* Force colors on charts */
+  .recharts-wrapper {
+    background: white !important;
+  }
+
+  .recharts-text {
+    fill: #374151 !important;
+  }
+
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: #e5e7eb !important;
+  }
+
+  /* Page settings */
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+}

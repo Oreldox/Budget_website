@@ -1,0 +1,519 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTIFICATION & ORGANISATIONS
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id               String        @id @default(cuid())
+  name             String?
+  email            String        @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  role             String        @default("user") // admin, user, viewer
+  isActive         Boolean       @default(true)
+  organizationId   String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  auditLogs        AuditLog[]
+  budgetLineComments BudgetLineComment[]
+
+  @@index([email])
+  @@index([organizationId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Organization {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  inviteCode   String        @unique @default(cuid())
+  settings     String        @default("{}")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  users               User[]
+  budgetTypes         BudgetType[]
+  domains             BudgetStructureDomain[]
+  budgetLines         BudgetLine[]
+  forecastBudgetLines ForecastBudgetLine[]
+  contracts           Contract[]
+  invoices            Invoice[]
+  purchaseOrders      PurchaseOrder[]
+  auditLogs           AuditLog[]
+  annualBudgets       AnnualBudget[]
+  services            Service[]
+  budgetLineComments  BudgetLineComment[]
+
+  @@index([slug])
+  @@index([inviteCode])
+}
+
+// ============================================
+// SERVICES ET PÔLES
+// ============================================
+
+model Service {
+  id             String   @id @default(cuid())
+  name           String   // DSI, Direction Marketing, Direction RH
+  description    String?
+  color          String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  poles          Pole[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model Pole {
+  id             String   @id @default(cuid())
+  serviceId      String
+  name           String   // Cybersécurité, Développement, IA, Centre de service
+  description    String?
+  color          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  service        Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  budgetLines    BudgetLine[]
+  forecastBudgetLines ForecastBudgetLine[]
+  budgetLineAllocations BudgetLinePoleAllocation[]
+
+  @@unique([serviceId, name])
+  @@index([serviceId])
+}
+
+// ============================================
+// BUDGET PRÉVISIONNEL ANNUEL
+// ============================================
+
+model AnnualBudget {
+  id                      String   @id @default(cuid())
+  organizationId          String
+  year                    Int
+  budgetFonctionnement    Float    @default(0) // Enveloppe globale Fonctionnement
+  budgetInvestissement    Float    @default(0) // Enveloppe globale Investissement
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, year])
+  @@index([organizationId])
+  @@index([year])
+}
+
+// ============================================
+// STRUCTURE BUDGÉTAIRE
+// ============================================
+
+model BudgetType {
+  id             String                  @id @default(cuid())
+  name           String                  // Logiciels, Infrastructure, Maintenance, Télécom, Divers
+  color          String?
+  organizationId String
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domains             BudgetStructureDomain[]
+  budgetLines         BudgetLine[]
+  forecastBudgetLines ForecastBudgetLine[]
+  contracts           Contract[]
+  invoices            Invoice[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model BudgetStructureDomain {
+  id             String       @id @default(cuid())
+  typeId         String
+  name           String       // Opérations, Développement, Support, Innovation
+  description    String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  type                BudgetType           @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  budgetLines         BudgetLine[]
+  forecastBudgetLines ForecastBudgetLine[]
+  contracts           Contract[]
+  invoices            Invoice[]
+
+  @@unique([organizationId, typeId, name])
+  @@index([organizationId])
+  @@index([typeId])
+}
+
+model BudgetLine {
+  id             String                  @id @default(cuid())
+  typeId         String
+  domainId       String
+  label          String
+  description    String?
+  budget         Float                   @default(0)
+  engineered     Float                   @default(0)
+  invoiced       Float                   @default(0)
+  accountingCode String?
+  nature         String?                 // Investissement, Fonctionnement
+  organizationId String
+  poleId         String?                 // Attribution à un pôle (optionnel)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  type             BudgetType              @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  domain           BudgetStructureDomain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pole             Pole?                   @relation(fields: [poleId], references: [id], onDelete: SetNull)
+  yearlyBudgets    YearlyBudget[]
+  contracts        Contract[]
+  invoices         Invoice[]
+  comments         BudgetLineComment[]
+  poleAllocations  BudgetLinePoleAllocation[]
+
+  @@index([organizationId])
+  @@index([typeId])
+  @@index([domainId])
+  @@index([poleId])
+}
+
+// Allocation d'une ligne budgétaire à plusieurs pôles avec pourcentages
+model BudgetLinePoleAllocation {
+  id             String      @id @default(cuid())
+  budgetLineId   String
+  poleId         String
+  percentage     Float       // Pourcentage d'allocation (0-100)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  budgetLine     BudgetLine  @relation(fields: [budgetLineId], references: [id], onDelete: Cascade)
+  pole           Pole        @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetLineId, poleId])
+  @@index([budgetLineId])
+  @@index([poleId])
+}
+
+model YearlyBudget {
+  id            String     @id @default(cuid())
+  budgetLineId  String
+  year          Int
+  budget        Float      @default(0)
+  engineered    Float      @default(0)
+  invoiced      Float      @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  budgetLine    BudgetLine @relation(fields: [budgetLineId], references: [id], onDelete: Cascade)
+
+  @@unique([budgetLineId, year])
+  @@index([budgetLineId])
+  @@index([year])
+}
+
+// ============================================
+// BUDGET PRÉVISIONNEL (FORECAST)
+// ============================================
+
+// Ligne budgétaire prévisionnelle (séparée des lignes réelles)
+model ForecastBudgetLine {
+  id             String              @id @default(cuid())
+  typeId         String
+  domainId       String
+  label          String
+  description    String?
+  budget         Float               @default(0) // Budget prévisionnel total
+  accountingCode String?
+  nature         String?             // Investissement, Fonctionnement
+  year           Int                 // Année du budget prévisionnel
+  organizationId String
+  poleId         String?             // Attribution à un pôle (optionnel)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  type           BudgetType          @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  domain         BudgetStructureDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pole           Pole?               @relation(fields: [poleId], references: [id], onDelete: SetNull)
+  expenses       ForecastExpense[]   // Dépenses détaillées sous cette ligne
+
+  @@index([organizationId])
+  @@index([typeId])
+  @@index([domainId])
+  @@index([year])
+  @@index([poleId])
+}
+
+// Dépense prévisionnelle détaillée
+model ForecastExpense {
+  id                    String              @id @default(cuid())
+  forecastBudgetLineId  String
+  year                  Int
+  label                 String              // Ex: "Licence Adobe Pro - 50 utilisateurs"
+  description           String?
+  amount                Float               // Montant prévisionnel estimé
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  forecastBudgetLine    ForecastBudgetLine  @relation(fields: [forecastBudgetLineId], references: [id], onDelete: Cascade)
+  linkedInvoices        Invoice[]           // Factures liées à cette dépense prévisionnelle (PIVOT)
+  linkedPurchaseOrders  PurchaseOrder[]     // Bons de commande liés à cette dépense prévisionnelle (PIVOT)
+
+  @@index([forecastBudgetLineId])
+  @@index([year])
+}
+
+// ============================================
+// CONTRATS
+// ============================================
+
+model Contract {
+  id             String              @id @default(cuid())
+  number         String
+  label          String
+  vendor         String
+  providerName   String?
+  startDate      DateTime
+  endDate        DateTime
+  amount         Float
+  typeId         String
+  domainId       String
+  budgetLineId   String?
+  status         String              // Actif, Expirant, Expiré
+  description    String?
+  constraints    String?
+  accountingCode String?
+  allocationCode String?
+  organizationId String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  type           BudgetType          @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  domain         BudgetStructureDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  budgetLine     BudgetLine?         @relation(fields: [budgetLineId], references: [id], onDelete: SetNull)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  yearlyAmounts  ContractYearAmount[]
+  invoices       Invoice[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([typeId])
+  @@index([domainId])
+  @@index([budgetLineId])
+  @@index([vendor])
+  @@index([status])
+}
+
+model ContractYearAmount {
+  id         String   @id @default(cuid())
+  contractId String
+  year       Int
+  amount     Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, year])
+  @@index([contractId])
+  @@index([year])
+}
+
+// ============================================
+// FACTURES
+// ============================================
+
+model Invoice {
+  id                      String                  @id @default(cuid())
+  number                  String
+  lineNumber              String?
+  contractId              String?
+  vendor                  String
+  supplierCode            String?
+  description             String
+  amount                  Float
+  amountHT                Float?
+  isCredit                Boolean                 @default(false) // true = avoir (montant négatif), false = facture normale
+  dueDate                 DateTime
+  invoiceDate             DateTime
+  invoiceYear             Int
+  paymentDate             DateTime?
+  status                  String                  // Payée, En attente, Retard
+  tags                    String?
+  comment                 String?
+  domainId                String
+  typeId                  String
+  nature                  String                  // Investissement, Fonctionnement
+  budgetLineId            String?
+  accountingCode          String?
+  allocationCode          String?
+  commandNumber           String?
+  pointed                 Boolean                 @default(false)
+  linkedForecastExpenseId String?                 // PIVOT: Lien vers une dépense prévisionnelle
+  organizationId          String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  type                    BudgetType              @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  domain                  BudgetStructureDomain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  budgetLine              BudgetLine?             @relation(fields: [budgetLineId], references: [id], onDelete: SetNull)
+  contract                Contract?               @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  organization            Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  linkedForecastExpense   ForecastExpense?        @relation(fields: [linkedForecastExpenseId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([typeId])
+  @@index([domainId])
+  @@index([budgetLineId])
+  @@index([contractId])
+  @@index([vendor])
+  @@index([status])
+  @@index([invoiceYear])
+  @@index([invoiceDate])
+  @@index([isCredit])
+  @@index([linkedForecastExpenseId])
+}
+
+// ============================================
+// AUDIT & LOGS
+// ============================================
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  userId         String?
+  action         String       // CREATE, UPDATE, DELETE
+  entity         String       // User, Invoice, Contract, etc.
+  entityId       String
+  changes        String?
+  organizationId String?
+  createdAt      DateTime     @default(now())
+
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+// ============================================
+// BONS DE COMMANDE (PURCHASE ORDERS)
+// ============================================
+
+model PurchaseOrder {
+  id                       String                @id @default(cuid())
+  number                   String                // Numéro du bon de commande
+  vendor                   String                // Fournisseur
+  orderDate                DateTime              // Date de commande
+  expectedDeliveryDate     DateTime?             // Date de livraison prévue
+  amount                   Float                 // Montant engagé
+  description              String?               // Description détaillée
+  status                   PurchaseOrderStatus   @default(DRAFT) // Statut du BC
+  linkedForecastExpenseId  String?               // PIVOT: Lien vers une dépense prévisionnelle
+  tags                     String?               // Tags JSON (optionnel)
+  attachments              String?               // Pièces jointes JSON (optionnel)
+  organizationId           String
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  linkedForecastExpense    ForecastExpense?      @relation(fields: [linkedForecastExpenseId], references: [id], onDelete: SetNull)
+  organization             Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, number])
+  @@index([organizationId])
+  @@index([vendor])
+  @@index([status])
+  @@index([orderDate])
+  @@index([linkedForecastExpenseId])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT       // Brouillon
+  SENT        // Envoyé au fournisseur
+  CONFIRMED   // Confirmé par le fournisseur
+  DELIVERED   // Livré
+  INVOICED    // Facturé
+  CANCELLED   // Annulé
+}
+
+// ============================================
+// COMMENTAIRES SUR LIGNES BUDGÉTAIRES
+// ============================================
+
+model BudgetLineComment {
+  id            String      @id @default(cuid())
+  content       String
+  budgetLineId  String
+  userId        String?
+  organizationId String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  budgetLine    BudgetLine  @relation(fields: [budgetLineId], references: [id], onDelete: Cascade)
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([budgetLineId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([createdAt])
+}

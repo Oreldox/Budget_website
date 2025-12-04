@@ -1,0 +1,411 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { Folder, Tag, FileText, Receipt, Calendar, TrendingUp, Edit2, Save, Trash2, AlignLeft } from 'lucide-react'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { useContracts, useInvoices, useBudgetStructure } from '@/lib/hooks'
+
+interface DomainDrawerProps {
+  domainId: string | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onUpdate: (id: string, data: { name: string; typeId: string; description?: string }) => void
+  onDelete: (id: string) => void
+}
+
+export function DomainDrawer({ domainId, open, onOpenChange, onUpdate, onDelete }: DomainDrawerProps) {
+  const { types, domains } = useBudgetStructure()
+  const { contracts } = useContracts()
+  const { invoices } = useInvoices()
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editTypeId, setEditTypeId] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+
+  const domain = domains.find(d => d.id === domainId)
+  const parentType = types.find(t => t.id === domain?.typeId)
+
+  // Reset editing state when drawer opens/closes
+  useEffect(() => {
+    if (open && domain) {
+      setEditName(domain.name)
+      setEditTypeId(domain.typeId)
+      setEditDescription(domain.description || '')
+      setIsEditing(false)
+    }
+  }, [open, domain])
+
+  // Computed stats
+  const stats = useMemo(() => {
+    if (!domainId) return null
+
+    const domainContracts = contracts.filter(c => c.domainId === domainId)
+    const domainInvoices = invoices.filter(i => i.domainId === domainId)
+
+    const totalContractAmount = domainContracts.reduce((sum, c) => sum + (c.amount || 0), 0)
+    const totalInvoiceAmount = domainInvoices.reduce((sum, i) => sum + (i.amount || 0), 0)
+    const activeContracts = domainContracts.filter(c => c.status === 'Actif').length
+    const paidInvoices = domainInvoices.filter(i => i.status === 'Payée').length
+
+    // Calculate yearly spending
+    const currentYear = new Date().getFullYear()
+    const yearlySpending: Record<number, number> = {}
+
+    domainInvoices.forEach(invoice => {
+      const year = new Date(invoice.invoiceDate).getFullYear()
+      yearlySpending[year] = (yearlySpending[year] || 0) + invoice.amount
+    })
+
+    return {
+      contracts: domainContracts,
+      invoices: domainInvoices,
+      totalContractAmount,
+      totalInvoiceAmount,
+      activeContracts,
+      paidInvoices,
+      yearlySpending,
+      currentYear,
+    }
+  }, [domainId, contracts, invoices])
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount)
+  }
+
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString('fr-FR')
+  }
+
+  const handleSave = () => {
+    if (!domainId || !editName.trim() || !editTypeId) return
+    onUpdate(domainId, {
+      name: editName,
+      typeId: editTypeId,
+      description: editDescription || undefined
+    })
+    setIsEditing(false)
+  }
+
+  const handleDelete = () => {
+    if (!domainId || !stats) return
+    if (stats.contracts.length > 0 || stats.invoices.length > 0) {
+      return // Can't delete if in use
+    }
+    onDelete(domainId)
+    onOpenChange(false)
+  }
+
+  if (!domain || !stats) return null
+
+  const usageCount = stats.contracts.length + stats.invoices.length
+  const selectedType = types.find(t => t.id === editTypeId)
+  const maxYearlySpending = Math.max(...Object.values(stats.yearlySpending), 1)
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-w-2xl">
+        <DrawerHeader className="border-b border-slate-700 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: `${parentType?.color || '#64748b'}20` }}
+              >
+                <Folder className="h-6 w-6" style={{ color: parentType?.color || '#64748b' }} />
+              </div>
+              <div>
+                <DrawerTitle className="text-xl font-bold text-slate-50">
+                  {domain.name}
+                </DrawerTitle>
+                {parentType && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded"
+                    style={{
+                      backgroundColor: `${parentType.color}20`,
+                      color: parentType.color
+                    }}
+                  >
+                    {parentType.name}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isEditing ? (
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Edit2 className="h-4 w-4 mr-1" />
+                  Modifier
+                </Button>
+              ) : (
+                <Button size="sm" onClick={handleSave} className="bg-cyan-600 hover:bg-cyan-700">
+                  <Save className="h-4 w-4 mr-1" />
+                  Sauver
+                </Button>
+              )}
+            </div>
+          </div>
+        </DrawerHeader>
+
+        <Tabs defaultValue="info" className="p-4">
+          <TabsList className="bg-slate-800 border border-slate-700">
+            <TabsTrigger value="info" className="data-[state=active]:bg-cyan-600">
+              Informations
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-cyan-600">
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-cyan-600">
+              Historique
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Informations Tab */}
+          <TabsContent value="info" className="mt-4 space-y-4">
+            {isEditing ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-slate-400 mb-1 block">Nom</label>
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="bg-slate-800 border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 mb-1 block">Type parent</label>
+                  <select
+                    value={editTypeId}
+                    onChange={(e) => setEditTypeId(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-50"
+                  >
+                    {types.map(type => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
+                  {selectedType && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <div
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: selectedType.color || '#06b6d4' }}
+                      />
+                      <span className="text-xs text-slate-400">Couleur du type</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm text-slate-400 mb-1 block">Description</label>
+                  <Input
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="bg-slate-800 border-slate-700"
+                    placeholder="Description optionnelle..."
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-slate-700">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={usageCount > 0}
+                    className="w-full"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {usageCount > 0
+                      ? `Impossible de supprimer (${usageCount} utilisation(s))`
+                      : 'Supprimer ce domaine'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Info Grid - Like VendorDrawer */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg">
+                    <Folder className="h-4 w-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Nom</p>
+                      <p className="text-slate-50 font-medium">{domain.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg">
+                    <Tag className="h-4 w-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Type parent</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div
+                          className="w-3 h-3 rounded"
+                          style={{ backgroundColor: parentType?.color || '#64748b' }}
+                        />
+                        <span className="text-slate-50">{parentType?.name || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg">
+                    <FileText className="h-4 w-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Contrats</p>
+                      <p className="text-slate-50 font-medium">{stats.contracts.length}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg">
+                    <Calendar className="h-4 w-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Créé le</p>
+                      <p className="text-slate-50 font-medium">
+                        {domain.createdAt ? formatDate(domain.createdAt) : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {domain.description && (
+                  <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg">
+                    <AlignLeft className="h-4 w-4 text-slate-400 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-400">Description</p>
+                      <p className="text-slate-50">{domain.description}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="mt-4 space-y-4">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-lg border border-cyan-500/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="h-4 w-4 text-cyan-400" />
+                  <p className="text-xs text-slate-400">Total Contrats</p>
+                </div>
+                <p className="text-2xl font-bold text-cyan-400">{formatCurrency(stats.totalContractAmount)}</p>
+                <p className="text-xs text-slate-500 mt-1">{stats.contracts.length} contrat(s) • {stats.activeContracts} actif(s)</p>
+              </div>
+              <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 rounded-lg border border-emerald-500/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Receipt className="h-4 w-4 text-emerald-400" />
+                  <p className="text-xs text-slate-400">Total Factures</p>
+                </div>
+                <p className="text-2xl font-bold text-emerald-400">{formatCurrency(stats.totalInvoiceAmount)}</p>
+                <p className="text-xs text-slate-500 mt-1">{stats.invoices.length} facture(s) • {stats.paidInvoices} payée(s)</p>
+              </div>
+            </div>
+
+            {/* Yearly Spending with Progress Bars */}
+            {Object.keys(stats.yearlySpending).length > 0 && (
+              <div className="p-4 bg-slate-800/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="h-4 w-4 text-slate-400" />
+                  <p className="text-sm font-medium text-slate-300">Dépenses par année</p>
+                </div>
+                <div className="space-y-3">
+                  {Object.entries(stats.yearlySpending)
+                    .sort(([a], [b]) => Number(b) - Number(a))
+                    .slice(0, 5)
+                    .map(([year, amount]) => (
+                      <div key={year}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-slate-400">{year}</span>
+                          <span className="text-slate-50 font-medium">{formatCurrency(amount)}</span>
+                        </div>
+                        <Progress
+                          value={(amount / maxYearlySpending) * 100}
+                          className="h-2"
+                        />
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* History Tab */}
+          <TabsContent value="history" className="mt-4 space-y-4">
+            {/* Recent contracts */}
+            <div>
+              <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Contrats récents
+              </h4>
+              {stats.contracts.length === 0 ? (
+                <p className="text-sm text-slate-500 p-3 bg-slate-800/30 rounded-lg">Aucun contrat</p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {stats.contracts.slice(0, 5).map(contract => (
+                    <div key={contract.id} className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-cyan-400 font-medium">{contract.number}</span>
+                          <p className="text-xs text-slate-400 mt-1 line-clamp-1">{contract.label}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-slate-50 font-medium">{formatCurrency(contract.amount)}</span>
+                          <p className="text-xs mt-1">
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${
+                              contract.status === 'Actif'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-slate-500/20 text-slate-400'
+                            }`}>
+                              {contract.status}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recent invoices */}
+            <div>
+              <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Factures récentes
+              </h4>
+              {stats.invoices.length === 0 ? (
+                <p className="text-sm text-slate-500 p-3 bg-slate-800/30 rounded-lg">Aucune facture</p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {stats.invoices.slice(0, 5).map(invoice => (
+                    <div key={invoice.id} className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-cyan-400 font-medium">{invoice.number}</span>
+                          <p className="text-xs text-slate-400 mt-1 line-clamp-1">{invoice.description}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-slate-50 font-medium">{formatCurrency(invoice.amount)}</span>
+                          <p className="text-xs mt-1">
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${
+                              invoice.status === 'Payée'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : invoice.status === 'En attente'
+                                ? 'bg-amber-500/20 text-amber-400'
+                                : 'bg-slate-500/20 text-slate-400'
+                            }`}>
+                              {invoice.status}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DrawerContent>
+    </Drawer>
+  )
+}
