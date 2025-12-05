@@ -23,7 +23,8 @@
       "Bash(npx tsc:*)",
       "Bash(if exist .next rd /s /q .next)",
       "Bash(timeout /t 2 /nobreak)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

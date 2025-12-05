@@ -4,53 +4,86 @@
 
 - Docker (version 20.10+)
 - Docker Compose (version 2.0+)
+- Make (optionnel, pour utiliser les commandes simplifiées)
 
 ## 🚀 Démarrage rapide
 
-### 1. Configuration
-
-Copiez le fichier d'environnement exemple :
+### Méthode 1 : Avec Make (recommandé)
 
 ```bash
-cp .env.production.example .env.production
+# Afficher l'aide
+make help
+
+# Lancer l'application avec SQLite (le plus simple)
+make up
+
+# Voir les logs
+make logs
+
+# Arrêter l'application
+make down
 ```
 
-Modifiez `.env.production` et changez **obligatoirement** :
-- `POSTGRES_PASSWORD` : Un mot de passe fort pour la base de données
-- `NEXTAUTH_SECRET` : Une chaîne aléatoire de minimum 32 caractères
-- `NEXTAUTH_URL` : L'URL de votre application en production
+### Méthode 2 : Avec Docker Compose
 
-Pour générer un secret aléatoire :
+#### Option A : SQLite (par défaut, recommandé pour débuter)
+
 ```bash
-openssl rand -base64 32
-```
+# Lancer l'application
+docker-compose --env-file .env.docker up -d
 
-### 2. Lancer l'application
-
-**Mode développement avec PostgreSQL :**
-```bash
-docker-compose up -d
-```
-
-**Voir les logs :**
-```bash
+# Voir les logs
 docker-compose logs -f app
-```
 
-**Arrêter l'application :**
-```bash
+# Arrêter l'application
 docker-compose down
 ```
 
-**Arrêter et supprimer les volumes (données perdues) :**
+#### Option B : PostgreSQL (pour production)
+
 ```bash
-docker-compose down -v
+# Éditer le fichier .env.docker et modifier NEXTAUTH_SECRET
+nano .env.docker
+
+# Lancer avec PostgreSQL
+docker-compose -f docker-compose.postgres.yml --env-file .env.docker up -d
+
+# Voir les logs
+docker-compose -f docker-compose.postgres.yml logs -f app
+
+# Arrêter
+docker-compose -f docker-compose.postgres.yml down
+```
+
+#### Option C : PostgreSQL + Nginx
+
+```bash
+# Lancer avec PostgreSQL + Nginx
+docker-compose -f docker-compose.postgres.yml --env-file .env.docker --profile with-nginx up -d
+
+# Arrêter
+docker-compose -f docker-compose.postgres.yml --profile with-nginx down
 ```
 
 ### 3. Accéder à l'application
 
-- Application : http://localhost:3000
-- Via Nginx : http://localhost:80
+- **Application directe** : http://localhost:3000
+- **Via Nginx** (si activé) : http://localhost:80
+
+### 4. Configuration initiale
+
+**IMPORTANT : Changez le secret NextAuth !**
+
+Générez un secret aléatoire :
+```bash
+# Linux/Mac
+openssl rand -base64 32
+
+# Windows PowerShell
+-join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object {[char]$_})
+```
+
+Modifiez `.env.docker` et remplacez `NEXTAUTH_SECRET` par le secret généré.
 
 ## 🛠️ Configuration avancée
 
