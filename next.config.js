@@ -12,6 +12,9 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  // Skip static generation for error pages to avoid pre-render issues
+  skipTrailingSlashRedirect: true,
+  skipMiddlewareUrlNormalize: true,
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

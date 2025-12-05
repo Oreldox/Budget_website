@@ -10,7 +10,7 @@ const commentSchema = z.object({
 // GET /api/budget-lines/[id]/comments - Récupérer les commentaires d'une ligne budgétaire
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -19,10 +19,12 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
+
     // Vérifier que la ligne budgétaire existe et appartient à l'organisation
     const budgetLine = await prisma.budgetLine.findFirst({
       where: {
-        id: params.id,
+        id: id,
         organizationId: session.user.organizationId,
       },
     })
@@ -33,7 +35,7 @@ export async function GET(
 
     const comments = await prisma.budgetLineComment.findMany({
       where: {
-        budgetLineId: params.id,
+        budgetLineId: id,
         organizationId: session.user.organizationId,
       },
       include: {
@@ -63,7 +65,7 @@ export async function GET(
 // POST /api/budget-lines/[id]/comments - Ajouter un commentaire
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -72,13 +74,14 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
     const body = await req.json()
     const data = commentSchema.parse(body)
 
     // Vérifier que la ligne budgétaire existe et appartient à l'organisation
     const budgetLine = await prisma.budgetLine.findFirst({
       where: {
-        id: params.id,
+        id: id,
         organizationId: session.user.organizationId,
       },
     })
@@ -90,7 +93,7 @@ export async function POST(
     const comment = await prisma.budgetLineComment.create({
       data: {
         content: data.content,
-        budgetLineId: params.id,
+        budgetLineId: id,
         userId: session.user.id || undefined,
         organizationId: session.user.organizationId,
       },

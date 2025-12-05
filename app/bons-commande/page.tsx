@@ -53,8 +53,13 @@ export default function BonsCommandePage() {
   }
 
   return (
-    <MainLayout title="Bons de Commande" description="Gestion des bons de commande et engagements">
+    <MainLayout>
       <div className="space-y-4">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-50">Bons de Commande</h1>
+          <p className="text-slate-400 mt-1">Gestion des bons de commande et engagements</p>
+        </div>
         {/* Actions Bar */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">

@@ -19,7 +19,7 @@ const purchaseOrderUpdateSchema = z.object({
 // GET /api/purchase-orders/[id] - Récupérer un bon de commande
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -28,9 +28,11 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
+
     const purchaseOrder = await prisma.purchaseOrder.findFirst({
       where: {
-        id: params.id,
+        id: id,
         organizationId: session.user.organizationId,
       },
       include: {
@@ -67,7 +69,7 @@ export async function GET(
 // PATCH /api/purchase-orders/[id] - Mettre à jour un bon de commande
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -76,13 +78,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
     const body = await req.json()
     const data = purchaseOrderUpdateSchema.parse(body)
 
     // Vérifier que le bon de commande existe et appartient à l'organisation
     const existing = await prisma.purchaseOrder.findFirst({
       where: {
-        id: params.id,
+        id: id,
         organizationId: session.user.organizationId,
       },
     })
@@ -118,7 +121,7 @@ export async function PATCH(
     if (data.attachments) updateData.attachments = JSON.stringify(data.attachments)
 
     const purchaseOrder = await prisma.purchaseOrder.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
       include: {
         linkedForecastExpense: {
@@ -157,7 +160,7 @@ export async function PATCH(
 // DELETE /api/purchase-orders/[id] - Supprimer un bon de commande
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -166,10 +169,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
+
     // Vérifier que le bon de commande existe et appartient à l'organisation
     const existing = await prisma.purchaseOrder.findFirst({
       where: {
-        id: params.id,
+        id: id,
         organizationId: session.user.organizationId,
       },
     })
@@ -179,7 +184,7 @@ export async function DELETE(
     }
 
     await prisma.purchaseOrder.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: 'Bon de commande supprimé avec succès' })

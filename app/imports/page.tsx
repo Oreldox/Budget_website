@@ -18,10 +18,22 @@ interface PreviewData {
   totalRows: number
 }
 
+interface ImportHistoryItem {
+  id: string
+  filename: string
+  type: ImportType
+  status: 'success' | 'partial' | 'error'
+  linesCount: number
+  errorsCount: number
+  date: string
+  errors?: string[]
+}
+
 export default function ImportsPage() {
   const [importType, setImportType] = useState<ImportType>('invoices')
   const [previewData, setPreviewData] = useState<PreviewData | null>(null)
   const [previewFile, setPreviewFile] = useState<File | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<ImportHistoryItem[]>([])
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 

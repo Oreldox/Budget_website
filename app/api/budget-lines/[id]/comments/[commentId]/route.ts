@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 // DELETE /api/budget-lines/[id]/comments/[commentId] - Supprimer un commentaire
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; commentId: string } }
+  { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   try {
     const session = await auth()
@@ -14,11 +14,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    // Await params for Next.js 15+
+    const { id, commentId } = await params
+
     // Vérifier que le commentaire existe et appartient à l'organisation
     const comment = await prisma.budgetLineComment.findFirst({
       where: {
-        id: params.commentId,
-        budgetLineId: params.id,
+        id: commentId,
+        budgetLineId: id,
         organizationId: session.user.organizationId,
       },
     })
@@ -36,7 +39,7 @@ export async function DELETE(
     }
 
     await prisma.budgetLineComment.delete({
-      where: { id: params.commentId },
+      where: { id: commentId },
     })
 
     return NextResponse.json({ message: 'Commentaire supprimé avec succès' })

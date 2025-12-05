@@ -407,7 +407,7 @@ export default function ServicesPage() {
                                   <div className="flex items-center gap-1">
                                     <span className="text-slate-500">Réelles:</span>
                                     <span className="text-emerald-400 font-semibold">
-                                      {pole._count.budgetLines}
+                                      {pole._count?.budgetLines || 0}
                                     </span>
                                   </div>
                                 )}
@@ -415,7 +415,7 @@ export default function ServicesPage() {
                                   <div className="flex items-center gap-1">
                                     <span className="text-slate-500">Prévisionnelles:</span>
                                     <span className="text-cyan-400 font-semibold">
-                                      {pole._count.forecastBudgetLines}
+                                      {pole._count?.forecastBudgetLines || 0}
                                     </span>
                                   </div>
                                 )}

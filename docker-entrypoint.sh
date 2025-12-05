@@ -33,14 +33,24 @@ if [ ! -z "$DATABASE_URL" ] && echo "$DATABASE_URL" | grep -q "postgresql"; then
   echo "📦 Running database migrations..."
   npx prisma migrate deploy
 else
-  echo "Using SQLite database (no wait needed)"
+  echo "🗄️  Using SQLite database (no wait needed)"
 
-  # For SQLite, just ensure Prisma client is generated
+  # For SQLite, ensure database directory exists
+  echo "📁 Creating database directory..."
+  mkdir -p /app/data
+
+  # Ensure Prisma client is generated
   echo "📦 Ensuring Prisma client is ready..."
   npx prisma generate
 
-  # Run migrations if needed
-  npx prisma migrate deploy 2>/dev/null || echo "No migrations to apply"
+  # Push database schema (use db push instead of migrate for SQLite without migrations)
+  echo "🔄 Initializing database schema..."
+  if npx prisma migrate deploy 2>/dev/null; then
+    echo "✅ Migrations applied successfully"
+  else
+    echo "⚠️  No migrations found, using db push..."
+    npx prisma db push --accept-data-loss --skip-generate || echo "❌ DB push failed"
+  fi
 fi
 
 # Start the application

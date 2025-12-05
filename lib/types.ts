@@ -79,6 +79,7 @@ export interface Invoice {
   description: string
   amount: number
   amountHT?: number
+  isCredit?: boolean  // true = avoir (montant négatif), false = facture normale
   dueDate: string
   invoiceDate: string
   invoiceYear: number

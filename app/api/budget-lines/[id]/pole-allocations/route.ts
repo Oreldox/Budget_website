@@ -13,7 +13,7 @@ const allocationSchema = z.object({
 // GET /api/budget-lines/[id]/pole-allocations - Récupérer les allocations de pôles
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -22,9 +22,11 @@ export async function GET(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
+
     const allocations = await prisma.budgetLinePoleAllocation.findMany({
       where: {
-        budgetLineId: params.id,
+        budgetLineId: id,
       },
       include: {
         pole: {
@@ -51,7 +53,7 @@ export async function GET(
 // PUT /api/budget-lines/[id]/pole-allocations - Mettre à jour les allocations (remplace toutes les allocations existantes)
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -60,13 +62,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
     }
 
+    const { id } = await params
     const body = await req.json()
     const data = allocationSchema.parse(body)
 
     // Vérifier que la ligne budgétaire existe et appartient à l'organisation
     const budgetLine = await prisma.budgetLine.findFirst({
       where: {
-        id: params.id,
+        id: id,
         organizationId: session.user.organizationId,
       },
     })
@@ -86,14 +89,14 @@ export async function PUT(
 
     // Supprimer toutes les allocations existantes
     await prisma.budgetLinePoleAllocation.deleteMany({
-      where: { budgetLineId: params.id },
+      where: { budgetLineId: id },
     })
 
     // Créer les nouvelles allocations
     if (data.allocations.length > 0) {
       await prisma.budgetLinePoleAllocation.createMany({
         data: data.allocations.map(a => ({
-          budgetLineId: params.id,
+          budgetLineId: id,
           poleId: a.poleId,
           percentage: a.percentage,
         })),
@@ -102,7 +105,7 @@ export async function PUT(
 
     // Récupérer les allocations créées avec les relations
     const allocations = await prisma.budgetLinePoleAllocation.findMany({
-      where: { budgetLineId: params.id },
+      where: { budgetLineId: id },
       include: {
         pole: {
           include: {

@@ -26,12 +26,11 @@ dist
 .env.docker
 
 # Database locale (ne pas inclure dans l'image)
+# IMPORTANT: Ne pas bloquer le dossier prisma lui-même, seulement les fichiers .db
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
-prisma/dev.db
-prisma/*.db
 
 # IDE
 .vscode
@@ -81,9 +80,8 @@ pids
 *.seed
 *.pid.lock
 
-# Scripts
+# Scripts (garder seed.ts et autres scripts Prisma nécessaires)
 scripts/wait-and-warmup.js
-scripts/*.ts
 
 # Misc
 Makefile

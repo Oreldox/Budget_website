@@ -24,7 +24,13 @@
       "Bash(if exist .next rd /s /q .next)",
       "Bash(timeout /t 2 /nobreak)",
       "Bash(git checkout:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(timeout /t 1 /nobreak)",
+      "Bash(if exist app echo App structure exists)",
+      "Bash(if exist public echo Public exists)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker compose:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []
