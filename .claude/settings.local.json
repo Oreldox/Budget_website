@@ -30,7 +30,11 @@
       "Bash(if exist public echo Public exists)",
       "Bash(docker-compose build:*)",
       "Bash(docker compose:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(node -e:*)",
+      "Bash(DATABASE_URL=postgresql://budget_user:VotreMotDePasse@localhost:5432/budget_db npx prisma validate:*)"
     ],
     "deny": [],
     "ask": []

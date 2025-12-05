@@ -3,8 +3,9 @@ FROM node:20.18-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl python3 make g++
 WORKDIR /app
 
-# Copy package files
+# Copy package files and prisma schema
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma
 RUN npm ci --legacy-peer-deps
 
 # Stage 2: Builder
@@ -17,6 +18,11 @@ COPY --from=deps /app/node_modules ./node_modules
 
 # Copy all files
 COPY . .
+
+# Set DATABASE_URL for Prisma generate (dummy value for build)
+# The real DATABASE_URL will be provided at runtime
+ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV DATABASE_URL=$DATABASE_URL
 
 # Generate Prisma Client
 RUN npx prisma generate
