@@ -9,6 +9,8 @@ $ErrorActionPreference = "Stop"
 function Show-Help {
     Write-Host "=== Commandes Docker disponibles ===" -ForegroundColor Green
     Write-Host ""
+    Write-Host "  setup           " -ForegroundColor Yellow -NoNewline
+    Write-Host "Créer .env.docker (première fois)"
     Write-Host "  help            " -ForegroundColor Yellow -NoNewline
     Write-Host "Affiche cette aide"
     Write-Host "  build           " -ForegroundColor Yellow -NoNewline
@@ -33,33 +35,47 @@ function Show-Help {
     Write-Host "Rebuild et relance"
     Write-Host ""
     Write-Host "Exemples:" -ForegroundColor Cyan
+    Write-Host "  .\docker.ps1 setup"
     Write-Host "  .\docker.ps1 up"
     Write-Host "  .\docker.ps1 logs"
     Write-Host "  .\docker.ps1 down"
 }
 
+function Setup-Env {
+    if (-not (Test-Path .env.docker)) {
+        Write-Host "Création de .env.docker..." -ForegroundColor Green
+        Copy-Item .env.production.example .env.docker
+        Write-Host "ATTENTION: Modifiez NEXTAUTH_SECRET dans .env.docker" -ForegroundColor Yellow
+    } else {
+        Write-Host ".env.docker existe déjà" -ForegroundColor Green
+    }
+}
+
 function Build-Image {
     Write-Host "Building Docker image..." -ForegroundColor Green
-    docker-compose build
+    docker compose build
 }
 
 function Start-App {
+    Setup-Env
     Write-Host "Starting application with SQLite..." -ForegroundColor Green
-    docker-compose --env-file .env.docker up -d
+    docker compose --env-file .env.docker up -d
     Write-Host ""
     Write-Host "Application démarrée sur http://localhost:3000" -ForegroundColor Green
 }
 
 function Start-AppPostgres {
+    Setup-Env
     Write-Host "Starting application with PostgreSQL..." -ForegroundColor Green
-    docker-compose -f docker-compose.postgres.yml --env-file .env.docker up -d
+    docker compose -f docker-compose.postgres.yml --env-file .env.docker up -d
     Write-Host ""
     Write-Host "Application démarrée sur http://localhost:3000" -ForegroundColor Green
 }
 
 function Start-AppNginx {
+    Setup-Env
     Write-Host "Starting application with PostgreSQL + Nginx..." -ForegroundColor Green
-    docker-compose -f docker-compose.postgres.yml --env-file .env.docker --profile with-nginx up -d
+    docker compose -f docker-compose.postgres.yml --env-file .env.docker --profile with-nginx up -d
     Write-Host ""
     Write-Host "Application démarrée:" -ForegroundColor Green
     Write-Host "  - Direct: http://localhost:3000"
@@ -68,8 +84,8 @@ function Start-AppNginx {
 
 function Stop-App {
     Write-Host "Stopping application..." -ForegroundColor Yellow
-    docker-compose down
-    docker-compose -f docker-compose.postgres.yml down
+    docker compose down 2>$null
+    docker compose -f docker-compose.postgres.yml down 2>$null
 }
 
 function Restart-App {
@@ -79,17 +95,17 @@ function Restart-App {
 }
 
 function Show-Logs {
-    docker-compose logs -f app
+    docker compose logs -f app
 }
 
 function Open-Shell {
-    docker-compose exec app sh
+    docker compose exec app sh
 }
 
 function Clean-All {
     Write-Host "Cleaning up..." -ForegroundColor Yellow
-    docker-compose down -v
-    docker-compose -f docker-compose.postgres.yml down -v
+    docker compose down -v 2>$null
+    docker compose -f docker-compose.postgres.yml down -v 2>$null
     Write-Host "Cleanup complete!" -ForegroundColor Green
 }
 
@@ -103,6 +119,7 @@ function Rebuild-App {
 
 # Exécuter la commande
 switch ($Command.ToLower()) {
+    "setup" { Setup-Env }
     "help" { Show-Help }
     "build" { Build-Image }
     "up" { Start-App }

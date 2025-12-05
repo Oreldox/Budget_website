@@ -41,8 +41,8 @@ fi
 
 # Test 2: Docker Compose installé
 echo "Test 2: Vérification de Docker Compose..."
-if command -v docker-compose &> /dev/null; then
-    COMPOSE_VERSION=$(docker-compose --version)
+if docker compose version &> /dev/null; then
+    COMPOSE_VERSION=$(docker compose version)
     success "Docker Compose installé: $COMPOSE_VERSION"
 else
     error "Docker Compose n'est pas installé"
@@ -72,21 +72,21 @@ done
 
 # Test 4: Validation docker-compose.yml
 echo "Test 4: Validation de docker-compose.yml..."
-if docker-compose -f docker-compose.yml config > /dev/null 2>&1; then
+if docker compose -f docker-compose.yml config > /dev/null 2>&1; then
     success "docker-compose.yml valide"
 else
     error "docker-compose.yml invalide"
-    docker-compose -f docker-compose.yml config
+    docker compose -f docker-compose.yml config
     exit 1
 fi
 
 # Test 5: Validation docker-compose.postgres.yml
 echo "Test 5: Validation de docker-compose.postgres.yml..."
-if docker-compose -f docker-compose.postgres.yml config > /dev/null 2>&1; then
+if docker compose -f docker-compose.postgres.yml config > /dev/null 2>&1; then
     success "docker-compose.postgres.yml valide"
 else
     error "docker-compose.postgres.yml invalide"
-    docker-compose -f docker-compose.postgres.yml config
+    docker compose -f docker-compose.postgres.yml config
     exit 1
 fi
 
@@ -121,7 +121,7 @@ read -p "Voulez-vous tester le build Docker ? (o/N) " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[Oo]$ ]]; then
     echo "Test 9: Build de l'image Docker..."
-    if DOCKER_BUILDKIT=1 docker-compose build --no-cache; then
+    if DOCKER_BUILDKIT=1 docker compose build --no-cache; then
         success "Build réussi"
     else
         error "Échec du build"
@@ -137,7 +137,7 @@ echo -e "${GREEN}Tous les tests sont passés !${NC}"
 echo "======================================"
 echo ""
 echo "Vous pouvez maintenant lancer l'application avec:"
-echo "  docker-compose --env-file .env.docker up -d"
+echo "  docker compose --env-file .env.docker up -d"
 echo ""
 echo "Ou avec Make:"
 echo "  make up"
